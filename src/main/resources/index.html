@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script>
+      let log = message =>
+          document.getElementById("messages").value +=
+              "[" + new Date().toTimeString().substring(0, 8) + "] " + message + "\n";
+
+      let ws = new WebSocket("ws://localhost:8080/data");
+      ws.onopen = () => log("WS connection opened");
+      ws.onclose = event => log("WS connection closed with code: " + event.code);
+      ws.onmessage = event => log("WS received: " + event.data);
+  </script>
+</head>
+<body>
+<textarea name="messages" id="messages" cols="50" rows="30"></textarea>
+</body>
+</html>
