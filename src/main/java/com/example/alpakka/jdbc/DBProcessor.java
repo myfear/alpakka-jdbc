@@ -26,7 +26,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 
 /**
- * @author myfear
+ *
  */
 public class DBProcessor {
 
@@ -54,6 +54,12 @@ public class DBProcessor {
             (SlickRow row) -> new User(row.nextInt(), row.nextString())
     );
 
+    /**
+     * Akka Alpakka example
+     *
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
         LOGGER.info("Init");
         // close Slick session onTermination of Actor system
@@ -96,12 +102,9 @@ class Server extends HttpApp {
                 }),
                 path("more", ()
                         -> {
-                    try {
-                        DBProcessor.inserUsersGraph.run(materializer).toCompletableFuture().get(5, TimeUnit.SECONDS);
-                    } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-                        Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    return complete(StatusCodes.OK);
+
+                    CompletionStage<Done> slowFuture = DBProcessor.inserUsersGraph.run(materializer);
+                    return completeOKWithFutureString(slowFuture.thenApply(x -> x + ""));
                 }),
                 get(()
                         -> pathSingleSlash(()
