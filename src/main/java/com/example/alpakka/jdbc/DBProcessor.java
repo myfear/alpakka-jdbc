@@ -104,7 +104,7 @@ class Server extends HttpApp {
                         -> {
 
                     CompletionStage<Done> slowFuture = DBProcessor.inserUsersGraph.run(materializer);
-                    return completeOKWithFutureString(slowFuture.thenApply(x -> x + ""));
+                    return completeOKWithFutureString(slowFuture.thenApply(done -> "Success"));
                 }),
                 get(()
                         -> pathSingleSlash(()
