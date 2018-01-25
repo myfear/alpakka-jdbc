@@ -14,6 +14,7 @@ import akka.stream.alpakka.slick.javadsl.*;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CompletionStage;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -36,7 +37,7 @@ public class DBProcessor {
     private static final SlickSession SESSION = SlickSession.forConfig("slick-h2");
 
     //Inser Users
-    private static final List<User> users = IntStream.range(0, 50).boxed().map((i) -> new User(i, "Name" + i)).collect(Collectors.toList());
+    private static final List<User> users = new Random().ints(50, 1, 1000).boxed().map((i) -> new User(i, "Name" + i)).collect(Collectors.toList());
     private static final Function<User, String> insertUser = (user) -> "INSERT INTO USERS VALUES (" + user.id + ", '" + user.name + "')";
     
     //Slick Sources and Sinks
@@ -45,7 +46,7 @@ public class DBProcessor {
 
     final static Source<User, NotUsed> usersStream = Slick.source(
             SESSION,
-            "SELECT ID, NAME FROM USERS",
+            "SELECT ID, NAME FROM USERS ORDER BY ID",
             (SlickRow row) -> new User(row.nextInt(), row.nextString())
     );
 
