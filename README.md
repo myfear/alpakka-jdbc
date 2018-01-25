@@ -8,7 +8,9 @@ The Alpakka Slick (JDBC) connector helps you build highly resilient integrations
 mvn exec:java
 ```
 
+## Use
 Navigate to `http://localhost:8080/`and see a list of User objects being streamed 
 from the database via a WebSocket connection to the browsers `<textarea>`.
+
 Navigate to `http://localhost:8080/more` and populate another 50 users to the database. 
 Refresh `http://localhost:8080/` and see the updated list.
