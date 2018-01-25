@@ -112,8 +112,8 @@
     
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
         <scala.version>2.12</scala.version>
         <sql.dir>${basedir}/src/main/resources</sql.dir>
     </properties>
