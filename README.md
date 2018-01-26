@@ -13,7 +13,7 @@ obviously “real time,” like detecting fraudulent financial activity as it ha
 A complete reference architecture for Fast Data can be seen in the free O'Reilly Report by Dean Wampler: [Fast Data Architectures For Streaming Applications](https://info.lightbend.com/COLL-20XX-Fast-Data-Architectures-for-Streaming-Apps_LP.html).
 
 The implications of these new architectures for classical monoliths are dramatic. Even if some platforms support asynchronous processing via REST or bidirectional streaming communication with e.g. WebSockets the majority of centralised systems is based on a blocking and synchronous server model (eg. Java EE). To modernise these systems in order to stay competitive the strangler pattern is an often used approach.
-![alt text](images/figure_2.gif "Classical messaging solutions")
+![alt text](images/figure_2.gif "Strangler Architecture with Streams")
 Mixing fast and slow producers and consumers is the biggest challenge here. And just increasing buffer sizes until some hardware limit is reached, eg. memory isn't a solution. This is where backpressure comes into play. It helps to avoid unbounded buffering across asynchronous boundaries. You can learn more about [Akka Streams, backpressure and asynchronous architectures](https://www.lightbend.com/blog/understanding-akka-streams-back-pressure-and-asynchronous-architectures) in a talk by Konrad Malawski.
 Also, looking at the database and the JDBC specification it quickly becomes clear, that most databases don't support  non-blocking, asynchronous calls. Introducing blocking code in a stream based solution won't work.
 
@@ -39,11 +39,13 @@ The relationship between these two is that the Akka Streams API is geared toward
 
 Finally, the [Alpakka Slick (JDBC)](https://developer.lightbend.com/docs/alpakka/current/slick.html) connector brings all these technologies together and helps you build highly resilient integrations between your applications and various relational databases such as DB2, Oracle, SQL Server etc.
 
-
 ## Walk through the example
 
-### tbd
 
+### The Example
+The example is using several tools from the Akka ecosystem (see Fig. 3). The core is Akka Streams, which lets us process the data in real time and in a streaming fashion. Reading and writing to the database is done via the Alpakka connector. Akka HTTP is used to expose both a WebSocket endpoint and a simple HTTP GET endpoint.
+![alt text](images/figure_3.gif "Classical messaging solutions")
+The database in this example is H2. Main reason for this is, that it is super easy to setup and configure in a Maven build. You can of course use any of the [Slick supported databases](http://slick.lightbend.com/doc/3.2.1/supported-databases.html).
 
 ## Run the example
 
