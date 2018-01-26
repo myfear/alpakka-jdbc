@@ -47,7 +47,16 @@ The example is using several tools from the Akka ecosystem (see Fig. 3). The cor
 ![alt text](images/figure_3.gif "Classical messaging solutions")
 The database in this example is H2. Main reason for this is, that it is super easy to setup and configure in a Maven build. You can of course use any of the [Slick supported databases](http://slick.lightbend.com/doc/3.2.1/supported-databases.html).
 
-## Run the example
+### Dependencies
+You can find the dependencies in the project [pom.xml](https://github.com/myfear/alpakka-jdbc/blob/master/pom.xml#L9)
+The main dependencies of this project are `akka-stream-${scala.version}`, `akka-stream-alpakka-slick-${scala.version}` and `akka-http-${scala.version}`. Don't worry about the Scala version. In this case it identifies the binary compatibility. To make it easier, it is captured in a Maven property: `<scala.version>2.12</scala.version>`
+ You also need to add the JDBC driver(s) for the specific relational database(s) to your project. In this case, it is `com.h2database.h2`.
+
+### Preparation (DB and execution)
+The h2 database needs initial setup and a clean start state. Instead of working with integration tests and a complex setup, it is easier to use the `sql-maven-plugin`. Use [this plugin](http://www.mojohaus.org/sql-maven-plugin/) to execute SQL statements in a combination of strings, a list of files and/or a set of files through sqlCommand, srcFiles, and fileset configurations respectively. In the plugin configuration  [pom.xmlL59](https://github.com/myfear/alpakka-jdbc/blob/master/pom.xml#L59) both the database location and the setup scripts are configured.
+The `exec-maven-plugin` configures the convenient [pom.xml#L43](https://github.com/myfear/alpakka-jdbc/blob/master/pom.xml#L43) start with the `exec:java` goal.
+
+### Run the example
 
 ```
 mvn exec:java
