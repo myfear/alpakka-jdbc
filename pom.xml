@@ -31,7 +31,6 @@
             <artifactId>h2</artifactId>
             <version>1.4.196</version>
         </dependency>
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-jdk14</artifactId>
@@ -74,7 +73,6 @@
                     <username>sa</username>
                     <password></password>
                     <autocommit>true</autocommit>
-               
                 </configuration>
                 <executions>
                     <execution>
@@ -92,8 +90,6 @@
                     </execution>
                 </executions>
             </plugin>
-            
-    
         </plugins>
     </build>
     
@@ -107,7 +103,4 @@
         <akka.alpakka.version>0.16</akka.alpakka.version>
         <sql.dir>${basedir}/src/main/resources</sql.dir>
     </properties>
-    
-    
-    
 </project>

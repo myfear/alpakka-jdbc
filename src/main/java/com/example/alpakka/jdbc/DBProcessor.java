@@ -18,7 +18,6 @@ import java.util.Random;
 import java.util.concurrent.CompletionStage;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.function.Function;
 
 /**
@@ -33,6 +32,7 @@ public class DBProcessor {
     // Logger and configuration
     private static final Logger LOGGER = Logger.getLogger("DBProcessor");
     private static final Config CONFIG = ConfigFactory.load();
+    
     // Slick session
     private static final SlickSession SESSION = SlickSession.forConfig("slick-h2");
 
