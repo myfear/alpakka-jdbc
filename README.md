@@ -43,7 +43,7 @@ In Akka Streams, the processing pipeline (the graph) consists of three types of 
 
 Using those components, you define your graph, which is nothing more than a recipe for processing your data - it doesn't do any computations so far. To actually execute the pipeline, you need to materialize the graph, i.e. convert it to a runnable form. In order to do it, you need a so-called materializer, which optimizes the graph definition and actually runs it. Therefore, the definition of the graph is completely decoupled from the way of running it, which, in theory, lets you use any materializer to run the pipeline. However, the built-in `ActorMaterializer` is actually the status quo, so chances are you won't be using any other implementation.
 
-When you look carefully at the type parameters of the components, you will notice that each of them, apart from the respective input/output types, has a mysterious `Mat` type. It refers to the so-called materialized value, which is a value that is accessible from outside the graph (as opposed to the input/output types which are internal to the communication between the graph stages - see Fig. 2). If you want to ignore the materialized value, which is quite often the case when you just focus on passing data between the graph stages, there is a special type parameter to denote it: `NotUsed`. You can think of it as being similar to Java's `Void`; however, it carries a little bit more semantic meaning - "we're not using this value" means more than just `Void`. Note also that in some APIs a similar type `Done` is used, to signal that something has completed. Other Java libraries would have perhaps used `Void` for both these cases, but Akka Streams attempts to keep all the types as semantically useful as possible.
+When you look carefully at the type parameters of the components, you will notice that each of them, apart from the respective input/output types, has a mysterious `Mat` type. It refers to the so-called materialized value, which is a value that is accessible from outside the graph (as opposed to the input/output types which are internal to the communication between the graph stages - see Fig. 3). If you want to ignore the materialized value, which is quite often the case when you just focus on passing data between the graph stages, there is a special type parameter to denote it: `NotUsed`. You can think of it as being similar to Java's `Void`; however, it carries a little bit more semantic meaning - "we're not using this value" means more than just `Void`. Note also that in some APIs a similar type `Done` is used, to signal that something has completed. Other Java libraries would have perhaps used `Void` for both these cases, but Akka Streams attempts to keep all the types as semantically useful as possible.
 
 <figure>
     <img src="images/figure_3.svg" alt="Figure 3. Flow type parameters explained">
@@ -97,9 +97,32 @@ Navigate to `http://localhost:8080/more` and populate another 50 users to the da
 Refresh `http://localhost:8080/` and see the updated list.
 
 ### The DBProcessor
-As you might have guessed, everything starts with the [`DBProcessor`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/DBProcessor.java#L26) class. Before anything else happens we will need an `ActorSystem` and a `Materializer`.
+As you might have guessed, everything starts with the [`DBProcessor`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/DBProcessor.java#L26) class. Before anything else happens we will need an `ActorSystem` and a `Materializer`. With Akka Streams being build on top of Akka, the `ActorSystem` is what it's name implies: The main system that is running our components here. As a heavyweight object, there is only one per application. The `Materializer` is a factory for stream execution engines, it is the thing that makes streams run—you don’t need to worry about any of the details just now apart from that you need one for calling any of the run methods on a Source.
+Before we look at the Sinks and Sources, there is one other important thing we need. The 'SlickSession', which is a thin wrapper around Slick’s database connection management and database profile API. We get one for a specific `slick-h2`config [DBProcessor.java#L37](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/DBProcessor.java#L37). It is defined in the [resources/application.conf](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/resources/application.conf) and contains nothing you wouldn't have expected from a JDBC connection definition. You can specify multiple different database configurations, as long as you use unique names. These can then be loaded by fully qualified configuration name using the `SlickSession.forConfig()` method described above. Slick requires you to eventually close your database session to free up connection pool resources. This is done on termination of the `ActorSystem`:
 
+```Java
+system.registerOnTermination(() -> {
+          SESSION.close();
+      });
+```
 
+The Slick connector allows you to perform a SQL query and expose the resulting stream of results as an Akka Streams `Source[T]`. Where `T` is any type that can be constructed using a database row. In our example we're going to stream [`User`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/User.java) objects to an Akka HTTP WebSocket endpoint. The Source definition looks like this:
+
+```Java
+final static Source<User, NotUsed> usersStream = Slick.source(
+           SESSION,
+           "SELECT ID, NAME FROM USERS ORDER BY ID",
+           (SlickRow row) -> new User(row.nextInt(), row.nextString())
+   );
+```
+
+But before we can select anything from a database, it needs to be there. To have both examples in one demo, the `DBProcessor` inserts the first 49 users before even starting the Akka HTTP server. The users stream is generated with  `Random().ints()` [DBProcessor.java#L40](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/DBProcessor.java#L40) and returned as a `List<User>`. The Sink is responsible for the insert:
+
+```Java
+  private static final Function<User, String> insertUser = (user) -> "INSERT INTO USERS VALUES (" + user.id + ", '" + user.name + "')";
+  final static Sink<User, CompletionStage<Done>> usersInsert = Slick.sink(SESSION, 4, insertUser);
+
+```
 
 
 ## Further Reading
