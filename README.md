@@ -117,7 +117,7 @@ system.registerOnTermination(() -> {
       });
 ```
 
-The Slick connector allows you to perform a SQL query and expose the resulting stream of results as an Akka Streams `Source[T]`. Where `T` is any type that can be constructed using a database row. In our example we're going to stream [`User`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/User.java) objects to an Akka HTTP WebSocket endpoint. The Source definition looks like this:
+The Slick connector allows you to perform a SQL query and expose the resulting stream of results as an Akka Streams `Source[T, NotUsed]` (or to be specific `akka.stream.javadsl.Source`) <!-- Don't show types that don't exist, even if it's boring to show the "NotUsed", it is tremendously useful in real world usage -->. Where `T` is any type that can be constructed using a database row. In our example we're going to stream [`User`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/User.java) objects to an Akka HTTP WebSocket endpoint. The Source definition looks like this:
 
 ```Java
 final static Source<User, NotUsed> usersStream = Slick.source(
