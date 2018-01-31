@@ -1,6 +1,6 @@
 # Introduction to JDBC Streaming for Java Developers
 
-With Microservices gaining a lot more traction in recent years, traditional enterprises running large, monolithic Java EE applications have been forced to rethink what they’ve been doing for nearly two decades. The need to modernise existing applications combined with new business requirements ultimately leads to changing technology stacks. Especially the hunt for high throughput and low resource consumption makes Reactive applications and Fast Data solutions extreme attractive. Instead of a greenfield development, most companies will work their steps towards these new challenges in risk free, smaller steps. A key to success with this approach is to find the suitable integration scenarios that support and protect both worlds. This is the first recipe in a series looking at Alpakka connectors and example integrations.
+With Microservices gaining a lot more traction in recent years, traditional enterprises running large, monolithic Java EE applications have been forced to rethink what they’ve been doing for nearly two decades. The need to modernise existing applications combined with new business requirements ultimately leads to changing technology stacks. Especially the hunt for high throughput and low resource consumption makes Reactive systems and Fast Data solutions extreme attractive. Instead of a greenfield development, most companies will work their steps towards these new challenges in risk free, smaller steps. A key to success with this approach is to find the suitable integration scenarios that support and protect both worlds. This is the first recipe in a series looking at Alpakka connectors and example integrations.
 
 ## Introduction
 Before diving into the code example, a little bit of background on the relevance of streaming and interaction with existing applications will help with identifying the overall architectural use-cases.
@@ -24,10 +24,18 @@ The implications of these new architectures for classical monoliths are dramatic
     <figcaption><strong>Figure 2.</strong> Strangler Architecture with Streams</figcaption>
 </figure>
 
+<!--
+Not a fan of this diagram somehow... but I guess it'll do for a start
+For one thing, Events are often incoming FROM such microservices, they'd be AKka powered, and from there already Via Akka Streams ending up in DBs or message brokers or other microservices. 
+-->
+
 Mixing fast and slow producers and consumers is the biggest challenge here. And just increasing buffer sizes until some hardware limit is reached, eg. memory isn't a solution. This is where backpressure comes into play. It helps to avoid unbounded buffering across asynchronous boundaries. You can learn more about [Akka Streams, backpressure and asynchronous architectures](https://www.lightbend.com/blog/understanding-akka-streams-back-pressure-and-asynchronous-architectures) in a talk by Konrad Malawski.
 Also, looking at the database and the JDBC specification it quickly becomes clear, that most databases don't support  non-blocking, asynchronous calls. Introducing blocking code in a stream based solution won't work.
 
 ### Slick for JDBC to the rescue
+
+<!-- while not really "owned by lightbend" anymore since we abandonned it, perhaps it makes sense to at lease call out that our core devs (Stefan did) created it and now it's fully OSS? -->
+
 [Slick](http://slick.lightbend.com/) is easy to use in asynchronous, non-blocking application designs, and supports building applications according to the [Reactive Manifesto](http://www.reactivemanifesto.org/). Unlike simple wrappers around traditional, blocking database APIs, Slick gives you:
 * Clean separation of I/O and CPU-intensive code: Isolating I/O allows you to keep your main thread pool busy with CPU-intensive parts of the application while waiting for I/O in the background.
 * Resilience under load: When a database cannot keep up with the load of your application, Slick will not create more and more threads (thus making the situation worse) or lock out all kinds of I/O. Back-pressure is controlled efficiently through a queue (of configurable size) for database I/O actions, allowing a certain number of requests to build up with very little resource usage and failing immediately once this limit has been reached.
@@ -36,7 +44,9 @@ Also, looking at the database and the JDBC specification it quickly becomes clea
 But instead of using Slick directly, we want to take a closer look at Akka Streams and Alpakka first.
 
 ### What is Akka Streams?
-The purpose is to offer an intuitive and safe way to formulate stream processing setups such that can then be executed  efficiently and with bounded resource usage. That means there are no more OutOfMemoryErrors. In order to achieve this  streams need to be able to limit the buffering that they employ, they also need to be able to slow down producers if the consumers cannot keep up. This feature is called back-pressure and is at the core of the Reactive Streams initiative of which Akka is a founding member. You can learn more in the article [Reactive Streams for Java Developers](https://developer.lightbend.com/blog/2017-08-18-introduction-to-reactive-streams-for-java-developers/index.html). This means that the hard problem of propagating and reacting to back-pressure has been incorporated in the design of Akka Streams already, so you have one less thing to worry about; it also means that Akka Streams interoperate seamlessly with all other Reactive Streams implementations
+The purpose is to offer an intuitive and safe way to formulate stream processing setups such that can then be executed  efficiently and with bounded resource usage. That means there are no more OutOfMemoryErrors. In order to achieve this  streams need to be able to limit the buffering that they employ, they also need to be able to slow down producers if the consumers cannot keep up. This feature is called back-pressure and is at the core of the Reactive Streams initiative of which Akka is a founding member.
+
+You can learn more in the article [Reactive Streams for Java Developers](https://developer.lightbend.com/blog/2017-08-18-introduction-to-reactive-streams-for-java-developers/index.html). This means that the hard problem of propagating and reacting to back-pressure has been incorporated in the design of Akka Streams already, so you have one less thing to worry about; it also means that Akka Streams interoperate seamlessly with all other Reactive Streams implementations.
 
 ### Akka Streams basics
 In Akka Streams, the processing pipeline (the graph) consists of three types of elements: a `Source` (the producer), a `Sink` (the consumer), and `Flow`s (the processing stages).
@@ -50,19 +60,15 @@ When you look carefully at the type parameters of the components, you will notic
     <figcaption><strong>Figure 3.</strong> Flow type parameters explained</figcaption>
 </figure>
 
-### Relationship with Reactive Streams
-The Akka Streams API is completely decoupled from the Reactive Streams interfaces. While Akka Streams focus on the formulation of transformations on data streams the scope of Reactive Streams is just to define a common mechanism of how to move data across an asynchronous boundary without losses, buffering or resource exhaustion.
-
-The relationship between these two is that the Akka Streams API is geared towards end-users while the Akka Streams implementation uses the Reactive Streams interfaces internally to pass data between the different processing stages. For this reason you will not find any resemblance between the Reactive Streams interfaces and the Akka Streams API. This is in line with the expectations of the Reactive Streams project, whose primary purpose is to define interfaces such that different streaming implementation can interoperate; it is not the purpose of Reactive Streams to describe an end-user API.
+<!-- Relationship with Reactive Streams --- not sure we need to open this can of drama (people love making drama out of it for some reason...), we said we natively support RS and that's enough -- remove this section? -->
 
 
 ### What is Alpakka?
-[Alpakka](https://developer.lightbend.com/docs/alpakka/current/) is an initiative, which harbours various [Akka Streams](https://doc.akka.io/docs/akka/current/stream/index.html?language=java) connectors, integration patterns, and data transformations for integration use cases. Akka Streams already has a lot of functionality that is useful for integrations. The Akka Streams DSL is able to define processing pipelines which are needed for operations on streaming data that don't fit in memory as a whole. It handles backpressure in an efficient non-blocking way that prevents out-of-memory errors, which is a typical problem when using unbounded buffering with producers that are faster than consumers. But instead of implementing everything low-level yourself, Alpakka has a growing number of [existing connectors](https://developer.lightbend.com/docs/alpakka/current/connectors.html) that can be used out of the box.
+[Alpakka](https://developer.lightbend.com/docs/alpakka/current/) is an initiative <!-- initiated by Lightbend? -->, which harbours various [Akka Streams](https://doc.akka.io/docs/akka/current/stream/index.html?language=java) connectors, integration patterns, and data transformations for integration use cases. Akka Streams already has a lot of functionality that is useful for integrations and the APIs have been specifically designed to make building custom integrations to various 3rd parties both simple *and* safe. Even so, it is nicer to be able to rely on a library of battle proven integrations to the most popular data sources and sinks -- and that is exactly what Alpakka is, with its growing number of [existing connectors](https://developer.lightbend.com/docs/alpakka/current/connectors.html) that can be used out of the box.
 
-Finally, the [Alpakka Slick (JDBC)](https://developer.lightbend.com/docs/alpakka/current/slick.html) connector brings all these technologies together and helps you build highly resilient integrations between your applications and various relational databases such as DB2, Oracle, SQL Server etc.
+Finally, in this example we will be using the [Alpakka Slick (JDBC)](https://developer.lightbend.com/docs/alpakka/current/slick.html) connector brings all these technologies together and helps you build highly resilient integrations between your applications and various relational databases such as DB2, Oracle, SQL Server etc.
 
 ## The Example
-
 
 ### Architectural Overview
 The example is using several tools from the Akka ecosystem (see Fig. 3). The core is Akka Streams, which lets us process the data in real time and in a streaming fashion. Reading and writing to the database is done via the Alpakka connector. Akka HTTP is used to expose both a WebSocket endpoint and a simple HTTP GET endpoint.
@@ -72,11 +78,14 @@ The example is using several tools from the Akka ecosystem (see Fig. 3). The cor
     <figcaption><strong>Figure 4.</strong> Architectural Overview</figcaption>
 </figure>
 
+<!-- How about adding a circle around the H2 / Slick / Alpakka part and show "actually, this could be anything! as the Alpakka components are easily swappable, want to send into some other store? just swap the alpakka connector" -->
+
 The database in this example is H2. Main reason for this is, that it is super easy to setup and configure in a Maven build. You can of course use any of the [Slick supported databases](http://slick.lightbend.com/doc/3.2.1/supported-databases.html). If you compare the above to a classical Java EE architecture, you’ll probably notice that things are much simpler here. No containers, no beans, just a simple standalone application. Moreover, the Java EE stack does not support the streaming approach whatsoever.
 
 ### Project Dependencies
 You can find the dependencies in the project [pom.xml#L9](https://github.com/myfear/alpakka-jdbc/blob/master/pom.xml#L9)
-The main dependencies of this project are `akka-stream-${scala.version}`, `akka-stream-alpakka-slick-${scala.version}` and `akka-http-${scala.version}`. Don't worry about the Scala version. as part of the `artifactId` it identifies binary compatibility with specific Scala versions. Remember: We love Scala and Java. To make it easier, it is captured in a Maven property: `<scala.version>2.12</scala.version>`
+The main dependencies of this project are `akka-stream_${scala.version}` <!-- artifact name mistake, underline there -->, `akka-stream-alpakka-slick_${scala.version}` and `akka-http_${scala.version}`. Don't worry about the Scala version. as part of the `artifactId` it identifies binary compatibility with specific Scala versions. Remember: We love Scala and Java, and we spend as much time perfecting the Java APIs as the Scala ones. In fact, all these artifacts contain packages called `javadsl` (and `scaladsl`), so you can easily pick the your-favourite-language trailored API you want to use. The Scala version we'll want to use for the artifacts is: `<scala.version>2.12</scala.version>`
+
 You also need to add the JDBC driver(s) for the specific relational database(s) to your project. In this case, it is `com.h2database.h2`.
 
 ### Preparation (DB and execution)
@@ -85,6 +94,7 @@ The `exec-maven-plugin` configures the convenient [pom.xml#L43](https://github.c
 
 ### Run the example
 Let's get things started:
+
 ```
 mvn exec:java
 ```
@@ -97,7 +107,8 @@ Navigate to `http://localhost:8080/more` and populate another 50 users to the da
 Refresh `http://localhost:8080/` and see the updated list.
 
 ### The DBProcessor
-As you might have guessed, everything starts with the [`DBProcessor`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/DBProcessor.java#L26) class. Before anything else happens we will need an `ActorSystem` and a `Materializer`. With Akka Streams being build on top of Akka, the `ActorSystem` is what it's name implies: The main system that is running our components here. As a heavyweight object, there is only one per application. The `Materializer` is a factory for stream execution engines, it is the thing that makes streams run—you don’t need to worry about any of the details just now apart from that you need one for calling any of the run methods on a Source.
+As you might have guessed, everything starts with the [`DBProcessor`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/DBProcessor.java#L26) class. Before anything else happens we will need an `ActorSystem` and a `Materializer`. With Akka Streams being build on top of Akka, the `ActorSystem` is what it's name implies: The main system that is running our components here. As a heavyweight object (it hosts all state and thread-pools that Akka uses), there is only one per application. The `Materializer` is a factory for stream execution engines, it is the thing that makes streams run—you don’t need to worry about any of the details just now apart from that you need one for calling any of the run methods on a Source.
+
 Before we look at the Sinks and Sources, there is one other important thing we need. The 'SlickSession', which is a thin wrapper around Slick’s database connection management and database profile API. We get one for a specific `slick-h2`config [DBProcessor.java#L37](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/DBProcessor.java#L37). It is defined in the [resources/application.conf](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/resources/application.conf) and contains nothing you wouldn't have expected from a JDBC connection definition. You can specify multiple different database configurations, as long as you use unique names. These can then be loaded by fully qualified configuration name using the `SlickSession.forConfig()` method described above. Slick requires you to eventually close your database session to free up connection pool resources. This is done on termination of the `ActorSystem`:
 
 ```Java
@@ -106,7 +117,7 @@ system.registerOnTermination(() -> {
       });
 ```
 
-The Slick connector allows you to perform a SQL query and expose the resulting stream of results as an Akka Streams `Source[T]`. Where `T` is any type that can be constructed using a database row. In our example we're going to stream [`User`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/User.java) objects to an Akka HTTP WebSocket endpoint. The Source definition looks like this:
+The Slick connector allows you to perform a SQL query and expose the resulting stream of results as an Akka Streams `Source[T, NotUsed]` (or to be specific `akka.stream.javadsl.Source`) <!-- Don't show types that don't exist, even if it's boring to show the "NotUsed", it is tremendously useful in real world usage -->. Where `T` is any type that can be constructed using a database row. In our example we're going to stream [`User`](https://github.com/myfear/alpakka-jdbc/blob/master/src/main/java/com/example/alpakka/jdbc/User.java) objects to an Akka HTTP WebSocket endpoint. The Source definition looks like this:
 
 ```Java
 final static Source<User, NotUsed> usersStream = Slick.source(
